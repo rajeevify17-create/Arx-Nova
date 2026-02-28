@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>ARX System</title>
+<title>ARX System 2.0</title>
 <style>
 /* === Body & Fonts === */
 body {
   font-family: 'Arial', sans-serif;
-  background: #0f0f15;
+  background: #0d0d15;
   color: #fff;
   margin: 0;
   padding: 0;
@@ -47,6 +47,8 @@ input, button {
 input {
   width: 250px;
   margin-right: 10px;
+  background: #1a1a28;
+  color: #fff;
 }
 button {
   background: #00fff0;
@@ -58,18 +60,18 @@ button:hover {
   background: #00bfae;
 }
 
-/* === Timetable Section === */
+/* === Timetable === */
 #timetable {
   margin-top: 30px;
-  width: 80%;
-  max-width: 600px;
+  width: 90%;
+  max-width: 700px;
   border-collapse: collapse;
 }
 #timetable th, #timetable td {
   padding: 12px;
   border: 1px solid #222;
   text-align: center;
-  transition: background 0.3s;
+  transition: background 0.3s, transform 0.3s;
 }
 #timetable th {
   background: #111;
@@ -79,10 +81,12 @@ button:hover {
 #timetable td {
   background: #1a1a28;
   cursor: pointer;
+  min-width: 120px;
 }
 #timetable td:hover {
   background: #00fff0;
   color: #111;
+  transform: scale(1.05);
 }
 
 /* === Habit List === */
@@ -90,8 +94,8 @@ button:hover {
   margin-top: 30px;
   list-style: none;
   padding: 0;
-  width: 80%;
-  max-width: 400px;
+  width: 90%;
+  max-width: 500px;
 }
 #habitList li {
   background: #111;
@@ -112,6 +116,8 @@ button:hover {
   padding: 6px 10px;
   cursor: pointer;
   border: none;
+  margin-left: 10px;
+  transition: 0.3s;
 }
 #habitList li button:hover {
   background: #ff0050;
@@ -127,13 +133,20 @@ button:hover {
   font-size: 1.3rem;
   color: #00fff0;
 }
+
+/* === Animations === */
+.completed {
+  text-decoration: line-through;
+  color: #888;
+  transition: all 0.3s;
+}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>⚡ ARX System</h1>
-  <p>Personal Discipline & Timetable Tracker</p>
+  <h1>⚡ ARX System 2.0</h1>
+  <p>Advanced Personal Discipline & Timetable Tracker</p>
 </header>
 
 <div id="inputSection">
@@ -145,10 +158,11 @@ button:hover {
   <tr>
     <th>Time Slot</th>
     <th>Habit</th>
+    <th>Action</th>
   </tr>
-  <tr><td>Morning (6-9am)</td><td id="slot1">—</td></tr>
-  <tr><td>Afternoon (12-3pm)</td><td id="slot2">—</td></tr>
-  <tr><td>Evening (6-9pm)</td><td id="slot3">—</td></tr>
+  <tr><td>Morning (6-9am)</td><td id="slot1">—</td><td><button onclick="markDone(1)">✔</button></td></tr>
+  <tr><td>Afternoon (12-3pm)</td><td id="slot2">—</td><td><button onclick="markDone(2)">✔</button></td></tr>
+  <tr><td>Evening (6-9pm)</td><td id="slot3">—</td><td><button onclick="markDone(3)">✔</button></td></tr>
 </table>
 
 <ul id="habitList"></ul>
@@ -156,39 +170,90 @@ button:hover {
 <div id="streak">Current Streak: 0</div>
 
 <script>
-let streak = 0;
+// ===== Persistent Data =====
+let habits = JSON.parse(localStorage.getItem("habits")) || [];
+let streak = parseInt(localStorage.getItem("streak")) || 0;
+let timetable = JSON.parse(localStorage.getItem("timetable")) || ["—","—","—"];
 
-function addHabit() {
+document.getElementById("streak").textContent = "Current Streak: " + streak;
+
+// ===== Render Habits =====
+function renderHabits() {
+  const list = document.getElementById("habitList");
+  list.innerHTML = "";
+  habits.forEach((habit, i) => {
+    const li = document.createElement("li");
+    li.textContent = habit.name;
+    if(habit.done) li.classList.add("completed");
+
+    const btn = document.createElement("button");
+    btn.textContent = habit.done ? "❌" : "✔";
+    btn.onclick = () => toggleHabit(i);
+
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+}
+
+// ===== Render Timetable =====
+function renderTimetable() {
+  for(let i=0;i<3;i++){
+    document.getElementById("slot"+(i+1)).textContent = timetable[i] || "—";
+  }
+}
+
+// ===== Toggle Habit Completion =====
+function toggleHabit(i){
+  habits[i].done = !habits[i].done;
+  if(habits[i].done) streak++;
+  else streak--;
+  if(streak<0) streak=0;
+
+  localStorage.setItem("habits", JSON.stringify(habits));
+  localStorage.setItem("streak", streak);
+  renderHabits();
+  document.getElementById("streak").textContent = "Current Streak: " + streak;
+}
+
+// ===== Mark Timetable Slot Done =====
+function markDone(slot){
+  if(timetable[slot-1]!=="—"){
+    streak++;
+    document.getElementById("streak").textContent = "Current Streak: " + streak;
+    localStorage.setItem("streak", streak);
+    timetable[slot-1] += " ✔";
+    localStorage.setItem("timetable", JSON.stringify(timetable));
+    renderTimetable();
+  }
+}
+
+// ===== Add New Habit =====
+function addHabit(){
   const input = document.getElementById("habitInput");
   const text = input.value.trim();
   if(!text) return;
 
-  // Add to habit list
-  const li = document.createElement("li");
-  li.textContent = text;
+  const habitObj = {name:text, done:false};
+  habits.push(habitObj);
+  localStorage.setItem("habits", JSON.stringify(habits));
 
-  const btn = document.createElement("button");
-  btn.textContent = "✔";
-  btn.onclick = function() {
-    li.style.textDecoration = "line-through";
-    streak++;
-    document.getElementById("streak").textContent = "Current Streak: " + streak;
-  }
-
-  li.appendChild(btn);
-  document.getElementById("habitList").appendChild(li);
-
-  // Assign habit to first empty slot in timetable
-  for(let i=1; i<=3; i++){
-    const slot = document.getElementById("slot"+i);
-    if(slot.textContent === "—"){
-      slot.textContent = text;
+  // Assign to first empty timetable slot
+  for(let i=0;i<3;i++){
+    if(timetable[i]==="—"){
+      timetable[i]=text;
+      localStorage.setItem("timetable", JSON.stringify(timetable));
       break;
     }
   }
 
   input.value="";
+  renderHabits();
+  renderTimetable();
 }
+
+// ===== Initial Render =====
+renderHabits();
+renderTimetable();
 </script>
 
 </body>
